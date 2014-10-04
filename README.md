@@ -25,7 +25,7 @@ To use AngularWAMP in your project, you need to include the following files in y
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
 
 <!-- AngularWAMP -->
-<script src="bower_components/angular-wamp/release/angular-wamp.min.js"></script>
+<script src="bower_components/angular-wamp/release/angular-wamp.js"></script>
 ```
 The angular-wamp.min.js file includes a copy of AutobahnJS, so you don't need to include that separately.
 
@@ -80,6 +80,16 @@ app.controller("MyCtrl", function($scope, $wamp) {
 ```
 
 You'll notice that we did not need to wait for the connection to be established before making WAMP calls.  That's because, all requests are queued until a connection is established.
+
+###Connecting
+
+To open the connection you just need to call ``$wamp.open()``.  This can be done from anywhere that allows ``$wamp`` to be injected.  If you want to open the connection right when the app starts, you can add it to ``.run()``.
+
+```Javascript
+    .run(function($wamp){
+        $wamp.open();
+    })
+```
 
 ### Events
 One area that AngularWAMP differs from AutobahnJS, is in how ``onclose`` and ``onopen`` are handled.  In AngularWAMP, they're events that are emitted globally.  This has the added benefit of allowing the entire app be aware of the connection state.

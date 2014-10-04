@@ -16,7 +16,7 @@ angular.module('vxWamp', [])
             init: function (i) {
                 options = i || {};
             },
-            $get: function ($rootScope, $q) {
+            $get: ["$rootScope", "$q", function ($rootScope, $q) {
                 var callbackQueue = [], connection;
                 var onChallengeDeferred = $q.defer();
 
@@ -32,20 +32,30 @@ angular.module('vxWamp', [])
                     return onChallengeDeferred.promise;
                 };
 
+                function digestWrapper(func) {
+                    return function () {
+                        var cb = func.apply(this, arguments);
+                        $rootScope.$apply();
+                        return cb;
+                    };
+                }
+
                 options = angular.extend({onchallenge: onchallenge}, options);
 
                 connection = new autobahn.Connection(options);
                 connection.onopen = function (session) {
-                    //Call any callbacks that were queued up before the connection was established
-                    var call;
-                    while (callbackQueue.length > 0) {
-                        call = callbackQueue.shift();
-                        call.method.apply(call.object, call.args);
-                    }
-
                     console.log("Congrats!  You're connected to the WAMP server!");
                     $rootScope.$broadcast("$wamp.open", session);
 
+                    //Call any callbacks that were queued up before the connection was established
+                    var call, resultPromise;
+
+                    while (callbackQueue.length > 0) {
+                        call = callbackQueue.shift();
+                        resultPromise = $q.when(session[call.method].apply(session, call.args));
+                        call.promise.resolve(resultPromise);
+                        console.log("processed queued " + call.method);
+                    }
                 };
 
                 connection.onclose = function (reason, details) {
@@ -66,68 +76,71 @@ angular.module('vxWamp', [])
                     },
                     subscribe: function (topic, handler, options) {
 
+                        handler = digestWrapper(handler);
                         if (!connection.isOpen) {
-                            callbackQueue.push({object: this, method: this.subscribe, args: [topic, handler, options]});
-                        } else {
-                            return $q.when(connection.session.subscribe(topic, handler, options));
+                            var deferred = $q.defer();
+                            callbackQueue.push({
+                                method: 'subscribe',
+                                args: [topic, handler, options],
+                                promise: deferred
+                            });
+                            console.log("connection not open, queuing subscribe");
+                            return deferred.promise;
                         }
+                        return $q.when(connection.session.subscribe(topic, handler, options));
 
-                        return $q.defer().promise;
                     },
                     unsubscribe: function (subscription) {
 
                         if (!connection.isOpen) {
-                            callbackQueue.push({object: this, method: this.unsubscribe, args: [subscription]});
-                        } else {
-                            return $q.when(connection.session.unsubscribe(subscription));
+                            var deferred = $q.defer();
+                            callbackQueue.push({method: 'unsubscribe', args: arguments, promise: deferred});
+                            console.log("connection not open, queuing unsbuscribe");
+                            return deferred.promise;
                         }
 
-                        return $q.defer().promise;
+                        return $q.when(connection.session.unsubscribe(subscription));
                     },
                     publish: function (topic, args, kwargs, options) {
 
                         if (!connection.isOpen) {
-                            callbackQueue.push({
-                                object: this,
-                                method: this.publish,
-                                args: [topic, args, kwargs, options]
-                            });
-                        } else {
-                            return $q.when(connection.session.publish(topic, args, kwargs, options));
+                            var deferred = $q.defer();
+                            callbackQueue.push({method: 'publish', args: arguments, promise: deferred});
+                            console.log("connection not open, queuing publish");
+                            return deferred.promise;
                         }
 
-                        return $q.defer().promise;
+                        return $q.when(connection.session.publish(topic, args, kwargs, options));
                     },
                     register: function (procedure, endpoint, options) {
 
+                        endpoint = digestWrapper(endpoint);
                         if (!connection.isOpen) {
+                            var deferred = $q.defer();
                             callbackQueue.push({
-                                object: this,
-                                method: this.register,
-                                args: [procedure, endpoint, options]
+                                method: 'register',
+                                args: [procedure, endpoint, options],
+                                promise: deferred
                             });
-                        } else {
-                            return $q.when(connection.session.register(procedure, endpoint, options));
+                            console.log("connection not open, queuing register");
+                            return deferred.promise;
                         }
 
-                        return $q.defer().promise;
+                        return $q.when(connection.session.register(procedure, endpoint, options));
                     },
                     call: function (procedure, args, kwargs, options) {
 
                         if (!connection.isOpen) {
-                            callbackQueue.push({
-                                object: this,
-                                method: this.call,
-                                args: [procedure, args, kwargs, options]
-                            });
-                        } else {
-                            return $q.when(connection.session.call(procedure, args, kwargs, options));
+                            var deferred = $q.defer();
+                            callbackQueue.push({method: 'call', args: arguments, promise: deferred});
+                            console.log("connection not open, queuing call");
+                            return deferred.promise;
                         }
 
-                        return $q.defer().promise;
+                        return $q.when(connection.session.call(procedure, args, kwargs, options));
                     }
                 };
-            }
+            }]
         };
 
     });
