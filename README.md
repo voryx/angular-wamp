@@ -5,7 +5,10 @@ AngularWAMP is an AngularJS wrapper for [AutobahnJS](https://github.com/tavendo/
 
 It simplifies getting WAMP v2 integrated into your AngularJS application.  For the most part, it's works just like AutobahnJS, with a couple of angular related changes, which are noted below.
 
+###What is this library used for?
+This library allows you to use WebSockets in your AngularJS app with any language that support the WAMPv2 protocol.  This includes, [Python](https://github.com/crossbario/crossbar) and [PHP](https://github.com/voryx/Thruway).  For a complete list of WAMPv2 implementations, visit the [implementations page](http://wamp.ws/implementations/) on wamp.ws.
 
+For more information on why WAMP is a great choice for your project, read: [Why WAMP?](http://wamp.ws/why/)
 
 ## Installing AngularWAMP
 
@@ -128,8 +131,8 @@ $scope.$on("$wamp.onchallenge", function (event, data) {
 You can also access the ``connection`` and ``session`` through the ``$wamp`` service:
 
 ```Javascript
-$thruway.session;
-$thruway.connection;
+$wamp.session;
+$wamp.connection;
 ```
 
 For more information, you can reference the AutobahnJS [documentation](http://autobahn.ws/js/reference.html).
