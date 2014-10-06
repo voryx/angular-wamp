@@ -24,10 +24,13 @@ To use AngularWAMP in your project, you need to include the following files in y
 <!-- AngularJS -->
 <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.2.26/angular.min.js"></script>
 
+<!-- AutobahnJS -->
+<script src="bower_components/autobahn/autobahn.js"></script>
+
 <!-- AngularWAMP -->
 <script src="bower_components/angular-wamp/release/angular-wamp.js"></script>
 ```
-The angular-wamp.min.js file includes a copy of AutobahnJS, so you don't need to include that separately.
+
 
 ## Documentation
 

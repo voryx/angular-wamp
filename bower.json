@@ -11,7 +11,8 @@
         "websockets",
         "AutobahnJS",
         "Thruway",
-        "Ratchet"
+        "Ratchet",
+        "Angular"
     ],
     "license": "MIT",
     "ignore": [
@@ -23,6 +24,7 @@
         "tests"
     ],
     "dependencies": {
-        "angular": ">= 1.2.0"
+        "angular": ">= 1.2.0",
+        "autobahn": ">= 0.9.5"
     }
 }

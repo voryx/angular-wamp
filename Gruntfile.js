@@ -13,7 +13,7 @@ module.exports = function (grunt) {
             app: {
                 //options: {banner: '<%= meta.banner %>'},
                 src: [
-                    'src/autobahn.min.js',
+                    //'src/autobahn.min.js',
                     'src/angular-wamp.js'
                 ],
                 dest: 'release/angular-wamp.js'
