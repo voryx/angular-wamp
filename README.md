@@ -100,7 +100,7 @@ One area that AngularWAMP differs from AutobahnJS, is in how ``onclose`` and ``o
 ```Javascript
 app.controller("MainCtrl", function($scope, $wamp) {
     $scope.$on("$wamp.open", function (event, session) {
-        console.log('We're connected to the WAMP Router!'); 
+        console.log('We are connected to the WAMP Router!'); 
     });
     
     $scope.$on("$wamp.close", function (event, data) {
