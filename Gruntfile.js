@@ -61,7 +61,10 @@ module.exports = function (grunt) {
         // Minify JavaScript
         uglify: {
             options: {
-                preserveComments: 'some'
+                preserveComments: 'some',
+                compress: {
+                    drop_console: true
+                }
             },
             app: {
                 files: {
