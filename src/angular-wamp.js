@@ -71,7 +71,7 @@ function $WampProvider() {
         options = initOptions || {};
     };
 
-    this.$get = function ($rootScope, $q) {
+    this.$get = function ($rootScope, $q, $log) {
 
         /**
          * @ngdoc service
@@ -164,7 +164,7 @@ function $WampProvider() {
 
         connection = new autobahn.Connection(options);
         connection.onopen = function (session) {
-            console.log("Congrats!  You're connected to the WAMP server!");
+            $log.debug("Congrats!  You're connected to the WAMP server!");
             $rootScope.$broadcast("$wamp.open", session);
 
             //Call any callbacks that were queued up before the connection was established
@@ -174,12 +174,12 @@ function $WampProvider() {
                 call = callbackQueue.shift();
                 resultPromise = $q.when(session[call.method].apply(session, call.args));
                 call.promise.resolve(resultPromise);
-                console.log("processed queued " + call.method);
+                $log.debug("processed queued " + call.method);
             }
         };
 
         connection.onclose = function (reason, details) {
-            console.log("Connection Closed: ", reason);
+            $log.debug("Connection Closed: ", reason);
             $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
 
         };
@@ -204,7 +204,7 @@ function $WampProvider() {
                         args: [topic, handler, options],
                         promise: deferred
                     });
-                    console.log("connection not open, queuing subscribe");
+                    $log.debug("connection not open, queuing subscribe");
                     return deferred.promise;
                 }
                 return $q.when(connection.session.subscribe(topic, handler, options));
@@ -215,7 +215,7 @@ function $WampProvider() {
                 if (!connection.isOpen) {
                     var deferred = $q.defer();
                     callbackQueue.push({method: 'unsubscribe', args: arguments, promise: deferred});
-                    console.log("connection not open, queuing unsbuscribe");
+                    $log.debug("connection not open, queuing unsbuscribe");
                     return deferred.promise;
                 }
 
@@ -226,7 +226,7 @@ function $WampProvider() {
                 if (!connection.isOpen) {
                     var deferred = $q.defer();
                     callbackQueue.push({method: 'publish', args: arguments, promise: deferred});
-                    console.log("connection not open, queuing publish");
+                    $log.debug("connection not open, queuing publish");
                     return deferred.promise;
                 }
 
@@ -242,7 +242,7 @@ function $WampProvider() {
                         args: [procedure, endpoint, options],
                         promise: deferred
                     });
-                    console.log("connection not open, queuing register");
+                    $log.debug("connection not open, queuing register");
                     return deferred.promise;
                 }
 
@@ -253,7 +253,7 @@ function $WampProvider() {
                 if (!connection.isOpen) {
                     var deferred = $q.defer();
                     callbackQueue.push({method: 'call', args: arguments, promise: deferred});
-                    console.log("connection not open, queuing call");
+                    $log.debug("connection not open, queuing call");
                     return deferred.promise;
                 }
 
