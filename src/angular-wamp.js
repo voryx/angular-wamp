@@ -160,10 +160,10 @@ function $WampProvider() {
             };
         }
 
-        options = angular.extend({onchallenge: onchallenge}, options);
+        options = angular.extend({onchallenge: digestWrapper(onchallenge)}, options);
 
         connection = new autobahn.Connection(options);
-        connection.onopen = function (session) {
+        connection.onopen = digestWrapper(function (session) {
             $log.debug("Congrats!  You're connected to the WAMP server!");
             $rootScope.$broadcast("$wamp.open", session);
 
@@ -176,13 +176,13 @@ function $WampProvider() {
                 call.promise.resolve(resultPromise);
                 $log.debug("processed queued " + call.method);
             }
-        };
+        });
 
-        connection.onclose = function (reason, details) {
+        connection.onclose = digestWrapper(function (reason, details) {
             $log.debug("Connection Closed: ", reason);
             $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
 
-        };
+        });
 
 
         return {
