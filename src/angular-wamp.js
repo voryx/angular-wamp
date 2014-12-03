@@ -172,7 +172,7 @@ function $WampProvider() {
 
             while (callbackQueue.length > 0) {
                 call = callbackQueue.shift();
-                resultPromise = $q.when(session[call.method].apply(session, call.args));
+                resultPromise = session[call.method].apply(session, call.args);
                 call.promise.resolve(resultPromise);
                 $log.debug("processed queued " + call.method);
             }
@@ -184,6 +184,46 @@ function $WampProvider() {
 
         });
 
+        /**
+         * Subscription object which self manages reconnections
+         * @param topic
+         * @param handler
+         * @param options
+         * @param subscribedCallback
+         * @returns {{}}
+         * @constructor
+         */
+        var Subscription = function (topic, handler, options, subscribedCallback) {
+
+            var subscription = {}, unregister, onOpen, deferred = $q.defer();
+
+            handler = digestWrapper(handler);
+
+            onOpen = function () {
+                connection.session.subscribe(topic, handler, options).then(function (s) {
+                    subscription = angular.extend(s, subscription);
+                    deferred.resolve(subscription);
+                    if (subscribedCallback) {
+                        subscribedCallback(subscription);
+                    }
+                });
+            };
+
+            if (connection.isOpen) {
+                onOpen();
+            }
+
+            unregister = $rootScope.$on("$wamp.open", onOpen);
+
+            subscription.promise = deferred.promise;
+            subscription.unsubscribe = function () {
+                unregister(); //Remove the event listener, so this object can get cleaned up by gc
+                return $q.when(connection.session.unsubscribe(subscription));
+            };
+
+            return subscription;
+        };
+
 
         return {
             connection: connection,
@@ -194,32 +234,11 @@ function $WampProvider() {
             close: function () {
                 connection.close();
             },
-            subscribe: function (topic, handler, options) {
-
-                handler = digestWrapper(handler);
-                if (!connection.isOpen) {
-                    var deferred = $q.defer();
-                    callbackQueue.push({
-                        method: 'subscribe',
-                        args: [topic, handler, options],
-                        promise: deferred
-                    });
-                    $log.debug("connection not open, queuing subscribe");
-                    return deferred.promise;
-                }
-                return $q.when(connection.session.subscribe(topic, handler, options));
-
+            subscribe: function (topic, handler, options, subscribedCallback) {
+                return Subscription(topic, handler, options, subscribedCallback).promise;
             },
             unsubscribe: function (subscription) {
-
-                if (!connection.isOpen) {
-                    var deferred = $q.defer();
-                    callbackQueue.push({method: 'unsubscribe', args: arguments, promise: deferred});
-                    $log.debug("connection not open, queuing unsbuscribe");
-                    return deferred.promise;
-                }
-
-                return $q.when(connection.session.unsubscribe(subscription));
+                return subscription.unsubscribe();
             },
             publish: function (topic, args, kwargs, options) {
 
