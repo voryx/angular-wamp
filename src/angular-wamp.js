@@ -200,13 +200,17 @@ function $WampProvider() {
             handler = digestWrapper(handler);
 
             onOpen = function () {
-                connection.session.subscribe(topic, handler, options).then(function (s) {
-                    subscription = angular.extend(s, subscription);
-                    deferred.resolve(subscription);
-                    if (subscribedCallback) {
-                        subscribedCallback(subscription);
+                var p = connection.session.subscribe(topic, handler, options).then(
+                    function (s) {
+                        subscription = angular.extend(s, subscription);
+                        deferred.resolve(subscription);
+                        return s;
                     }
-                });
+                );
+                if (subscribedCallback) {
+                    subscribedCallback($q.when(p));
+                }
+
             };
 
             if (connection.isOpen) {
