@@ -160,7 +160,7 @@ function $WampProvider() {
             };
         }
 
-        options = angular.extend({onchallenge: digestWrapper(onchallenge)}, options);
+        options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, options);
 
         connection = new autobahn.Connection(options);
         connection.onopen = digestWrapper(function (session) {
@@ -208,7 +208,7 @@ function $WampProvider() {
                     }
                 );
                 if (subscribedCallback) {
-                    subscribedCallback($q.when(p));
+                    subscribedCallback(p);
                 }
 
             };
@@ -222,7 +222,7 @@ function $WampProvider() {
             subscription.promise = deferred.promise;
             subscription.unsubscribe = function () {
                 unregister(); //Remove the event listener, so this object can get cleaned up by gc
-                return $q.when(connection.session.unsubscribe(subscription));
+                return connection.session.unsubscribe(subscription);
             };
 
             return subscription;
@@ -253,7 +253,7 @@ function $WampProvider() {
                     return deferred.promise;
                 }
 
-                return $q.when(connection.session.publish(topic, args, kwargs, options));
+                return connection.session.publish(topic, args, kwargs, options);
             },
             register: function (procedure, endpoint, options) {
 
@@ -269,7 +269,7 @@ function $WampProvider() {
                     return deferred.promise;
                 }
 
-                return $q.when(connection.session.register(procedure, endpoint, options));
+                return connection.session.register(procedure, endpoint, options);
             },
             call: function (procedure, args, kwargs, options) {
 
@@ -280,7 +280,7 @@ function $WampProvider() {
                     return deferred.promise;
                 }
 
-                return $q.when(connection.session.call(procedure, args, kwargs, options));
+                return connection.session.call(procedure, args, kwargs, options);
             }
         };
     };
