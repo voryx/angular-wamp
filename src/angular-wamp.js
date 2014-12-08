@@ -245,11 +245,17 @@ function $WampProvider() {
 
                 sessionPromise.then(
                     function(session) {
-                        $q.when(session.publish(topic, args, kwargs, options)).then(
-                            function(publication) {
-                                deferred.resolve(publication);
-                            }
-                        );
+                        var publishPromise = session.publish(topic, args, kwargs, options);
+
+                        if (publishPromise) {
+                            publishPromise.then(
+                                function(publication) {
+                                    deferred.resolve(publication);
+                                }
+                            );
+                        }
+                        else
+                            deferred.resolve(true);
                      }
                 );
 
@@ -263,7 +269,7 @@ function $WampProvider() {
 
                 sessionPromise.then(
                     function(session) {
-                        $q.when(session.register(procedure, endpoint, option)).then(
+                        session.register(procedure, endpoint, options).then(
                             function(registration) {
                                 deferred.resolve(registration);
                             }
@@ -279,7 +285,7 @@ function $WampProvider() {
 
                 sessionPromise.then(
                     function(session) {
-                        $q.when(session.call(procedure, args, kwargs, options)).then(
+                        session.call(procedure, args, kwargs, options).then(
                             function(result) {
                                 deferred.resolve(result);
                             }
