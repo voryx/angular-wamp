@@ -121,7 +121,11 @@ function $WampProvider() {
          * @todo write more docs
          */
 
-        var callbackQueue = [], connection;
+        var connection;
+
+        var sessionDeferred = $q.defer();
+        var sessionPromise = sessionDeferred.promise;
+
         var onChallengeDeferred = $q.defer();
 
         /**
@@ -167,15 +171,7 @@ function $WampProvider() {
             $log.debug("Congrats!  You're connected to the WAMP server!");
             $rootScope.$broadcast("$wamp.open", session);
 
-            //Call any callbacks that were queued up before the connection was established
-            var call, resultPromise;
-
-            while (callbackQueue.length > 0) {
-                call = callbackQueue.shift();
-                resultPromise = session[call.method].apply(session, call.args);
-                call.promise.resolve(resultPromise);
-                $log.debug("processed queued " + call.method);
-            }
+            sessionDeferred.resolve(session);
         });
 
         connection.onclose = digestWrapper(function (reason, details) {
@@ -231,7 +227,6 @@ function $WampProvider() {
 
         return {
             connection: connection,
-            session: connection.session,
             open: function () {
                 connection.open();
             },
@@ -246,41 +241,53 @@ function $WampProvider() {
             },
             publish: function (topic, args, kwargs, options) {
 
-                if (!connection.isOpen) {
-                    var deferred = $q.defer();
-                    callbackQueue.push({method: 'publish', args: arguments, promise: deferred});
-                    $log.debug("connection not open, queuing publish");
-                    return deferred.promise;
-                }
+                var deferred = $q.defer();
 
-                return connection.session.publish(topic, args, kwargs, options);
+                sessionPromise.then(
+                    function(session) {
+                        $q.when(session.publish(topic, args, kwargs, options)).then(
+                            function(publication) {
+                                deferred.resolve(publication);
+                            }
+                        );
+                     }
+                );
+
+                return deferred.promise;
             },
             register: function (procedure, endpoint, options) {
 
                 endpoint = digestWrapper(endpoint);
-                if (!connection.isOpen) {
-                    var deferred = $q.defer();
-                    callbackQueue.push({
-                        method: 'register',
-                        args: [procedure, endpoint, options],
-                        promise: deferred
-                    });
-                    $log.debug("connection not open, queuing register");
-                    return deferred.promise;
-                }
 
-                return connection.session.register(procedure, endpoint, options);
+                var deferred = $q.defer();
+
+                sessionPromise.then(
+                    function(session) {
+                        $q.when(session.register(procedure, endpoint, option)).then(
+                            function(registration) {
+                                deferred.resolve(registration);
+                            }
+                        );
+                    }
+                );
+
+                return deferred.promise;
             },
             call: function (procedure, args, kwargs, options) {
 
-                if (!connection.isOpen) {
-                    var deferred = $q.defer();
-                    callbackQueue.push({method: 'call', args: arguments, promise: deferred});
-                    $log.debug("connection not open, queuing call");
-                    return deferred.promise;
-                }
+                var deferred = $q.defer();
 
-                return connection.session.call(procedure, args, kwargs, options);
+                sessionPromise.then(
+                    function(session) {
+                        $q.when(session.call(procedure, args, kwargs, options)).then(
+                            function(result) {
+                                deferred.resolve(result);
+                            }
+                        );
+                    }
+                );
+
+                return deferred.promise;
             }
         };
     };
