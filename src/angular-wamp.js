@@ -54,7 +54,7 @@ function $WampProvider() {
      *      Options that control what kind of Deferreds to use:
      *
      *      - `use_es6_promises`: `{boolean=}` - use deferreds based on ES6 promises
-     *      - `use_deferred`: `{callable=}` - if provided, use this deferred constructor, e.g. jQuery.Deferred or Q.defer
+     *      - `use_deferred`: `{callable=}` - if provided, use this deferred constructor, e.g. jQuery.Deferred or Q.defer (default: $q.defer)
      *
      *      Options that control automatic reconnection:
      *
@@ -244,19 +244,20 @@ function $WampProvider() {
                 var deferred = $q.defer();
 
                 sessionPromise.then(
-                    function(session) {
+                    function (session) {
                         var publishPromise = session.publish(topic, args, kwargs, options);
 
                         if (publishPromise) {
                             publishPromise.then(
-                                function(publication) {
+                                function (publication) {
                                     deferred.resolve(publication);
                                 }
                             );
                         }
-                        else
+                        else {
                             deferred.resolve(true);
-                     }
+                        }
+                    }
                 );
 
                 return deferred.promise;
@@ -268,9 +269,9 @@ function $WampProvider() {
                 var deferred = $q.defer();
 
                 sessionPromise.then(
-                    function(session) {
+                    function (session) {
                         session.register(procedure, endpoint, options).then(
-                            function(registration) {
+                            function (registration) {
                                 deferred.resolve(registration);
                             }
                         );
@@ -284,9 +285,9 @@ function $WampProvider() {
                 var deferred = $q.defer();
 
                 sessionPromise.then(
-                    function(session) {
+                    function (session) {
                         session.call(procedure, args, kwargs, options).then(
-                            function(result) {
+                            function (result) {
                                 deferred.resolve(result);
                             }
                         );
