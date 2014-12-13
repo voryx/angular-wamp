@@ -171,8 +171,7 @@
             connection.onopen = digestWrapper(function (session) {
                 $log.debug("Congrats!  You're connected to the WAMP server!");
                 $rootScope.$broadcast("$wamp.open", session);
-
-                sessionDeferred.resolve(session);
+                sessionDeferred.resolve();
             });
 
             connection.onclose = digestWrapper(function (reason, details) {
@@ -245,8 +244,8 @@
                     var deferred = $q.defer();
 
                     sessionPromise.then(
-                        function (session) {
-                            var publishPromise = session.publish(topic, args, kwargs, options);
+                        function () {
+                            var publishPromise = connection.session.publish(topic, args, kwargs, options);
 
                             if (publishPromise) {
                                 publishPromise.then(
@@ -270,8 +269,8 @@
                     var deferred = $q.defer();
 
                     sessionPromise.then(
-                        function (session) {
-                            session.register(procedure, endpoint, options).then(
+                        function () {
+                            connection.session.register(procedure, endpoint, options).then(
                                 function (registration) {
                                     deferred.resolve(registration);
                                 }
@@ -286,8 +285,8 @@
                     var deferred = $q.defer();
 
                     sessionPromise.then(
-                        function (session) {
-                            session.call(procedure, args, kwargs, options).then(
+                        function () {
+                            connection.session.call(procedure, args, kwargs, options).then(
                                 function (result) {
                                     deferred.resolve(result);
                                 }
