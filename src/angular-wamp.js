@@ -88,46 +88,76 @@
              * @example
              *
              * app.config(function ($wampProvider) {
-         *      $wampProvider.init({
-         *          url: 'ws://127.0.0.1:9000/',
-         *          realm: 'realm1'
-         *      });
-         * })
+             *      $wampProvider.init({
+             *          url: 'ws://127.0.0.1:9000/',
+             *          realm: 'realm1'
+             *      });
+             * })
              *
              *  app.controller("MyCtrl", function($scope, $wamp) {
-         *
-         *      // 1) subscribe to a topic
-         *      function onevent(args) {
-         *          $scope.hello = args[0];
-         *      }
-         *      $wamp.subscribe('com.myapp.hello', onevent);
-         *
-         *      // 2) publish an event
-         *      $wamp.publish('com.myapp.hello', ['Hello, world!']);
-         *
-         *      // 3) register a procedure for remoting
-         *      function add2(args) {
-         *          return args[0] + args[1];
-         *      }
-         *      $wamp.register('com.myapp.add2', add2);
-         *
-         *      // 4) call a remote procedure
-         *      $wamp.call('com.myapp.add2', [2, 3]).then(
-         *          function (res) {
-         *          $scope.add2 = res;
-         *      });
-         * });
              *
+             *      // 1) subscribe to a topic
+             *      function onevent(args) {
+             *          $scope.hello = args[0];
+             *      }
+             *      $wamp.subscribe('com.myapp.hello', onevent);
              *
-             * @todo write more docs
+             *      // 2) publish an event
+             *      $wamp.publish('com.myapp.hello', ['Hello, world!']);
+             *
+             *      // 3) register a procedure for remoting
+             *      function add2(args) {
+             *          return args[0] + args[1];
+             *      }
+             *      $wamp.register('com.myapp.add2', add2);
+             *
+             *      // 4) call a remote procedure
+             *      $wamp.call('com.myapp.add2', [2, 3]).then(
+             *          function (res) {
+             *          $scope.add2 = res;
+             *      });
+             * });
+             *
+             *  Events
+             *
+             *  There are four events that $wamp can broadcast:
+             *      1)  $wamp.open - is sent when the WAMP connection opens.
+             *
+             *              $scope.$on("$wamp.open", function (event, session) {
+             *                  // Do something
+             *              });
+             *
+             *      2)  $wamp.close - is sent when the WAMP connection closes.
+             *
+             *              $scope.$on("$wamp.close", function (event, info) {
+             *                  // info.reason: wamp close reason
+             *                  // info.details: wamp close details
+             *              });
+             *
+             *      3)  $wamp.error - is sent when an error occurs while trying to make a call, publish or register
+             *
+             *              $scope.$on("$wamp.error", function (event, error) {
+             *                  // error: Autobahn.Error object
+             *              });
+             *
+             *      4)  $wamp.onchallenge
+             *
+             *              $scope.$on("$wamp.onchallenge", function (event, info) {
+             *                  // info.promise: promise to return to wamp,
+             *                  // info.session: wamp session,
+             *                  // info.method: auth method,
+             *                  // info.extra: extra
+             *
+             *                  //ie. wamp-cra
+             *                  var key =  autobahn.auth_cra.derive_key("da_password", info.extra.salt);
+             *                  return info.promise.resolve(autobahn.auth_cra.sign(key, info.extra.challenge));
+             *              });
+             *
              */
 
             var connection;
-
             var sessionDeferred = $q.defer();
             var sessionPromise = sessionDeferred.promise;
-
-            var onChallengeDeferred = $q.defer();
 
             /**
              * @param session
@@ -139,6 +169,8 @@
              * Gets called when a Challenge Message is sent by the router
              */
             var onchallenge = function (session, method, extra) {
+
+                var onChallengeDeferred = $q.defer();
 
                 $rootScope.$broadcast("$wamp.onchallenge", {
                     promise: onChallengeDeferred,
@@ -175,10 +207,10 @@
             });
 
             connection.onclose = digestWrapper(function (reason, details) {
-                $log.debug("Connection Closed: ", reason);
+                $log.debug("Connection Closed: ", reason, details);
                 $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
-
             });
+
 
             /**
              * Subscription object which self manages reconnections
@@ -224,11 +256,19 @@
                 return subscription;
             };
 
-
             return {
                 connection: connection,
                 open: function () {
-                    connection.open();
+                    //If using WAMP CRA we need to get the authid before the connection can be opened.
+                    if (options.authmethods && options.authmethods.indexOf('wampcra') !== -1 && !options.authid) {
+                        $log.debug("You're using WAMP CRA.  The authid must be set on $wamp before the connection can be opened, ie: $wamp.setAuthId('john.doe')");
+                    } else {
+                        connection.open();
+                    }
+                },
+                setAuthId: function (authid, open) {
+                    options.authid = authid;
+                    if (open) connection.open();
                 },
                 close: function () {
                     connection.close();
@@ -248,11 +288,15 @@
                             var publishPromise = connection.session.publish(topic, args, kwargs, options);
 
                             if (publishPromise) {
-                                publishPromise.then(
-                                    function (publication) {
+                                publishPromise
+                                    .then(function (publication) {
                                         deferred.resolve(publication);
-                                    }
-                                );
+                                    })
+                                    .catch(function (error) {
+                                        deferred.reject(error);
+                                        $rootScope.$broadcast("$wamp.error", error);
+                                        $log.error("$wamp.publish error", error);
+                                    });
                             }
                             else {
                                 deferred.resolve(true);
@@ -268,13 +312,16 @@
 
                     var deferred = $q.defer();
 
-                    sessionPromise.then(
-                        function () {
-                            connection.session.register(procedure, endpoint, options).then(
-                                function (registration) {
+                    sessionPromise.then(function () {
+                            connection.session.register(procedure, endpoint, options)
+                                .then(function (registration) {
                                     deferred.resolve(registration);
-                                }
-                            );
+                                })
+                                .catch(function (error) {
+                                    deferred.reject(error);
+                                    $rootScope.$broadcast("$wamp.error", error);
+                                    $log.error("$wamp.register error", error);
+                                });
                         }
                     );
 
@@ -284,15 +331,17 @@
 
                     var deferred = $q.defer();
 
-                    sessionPromise.then(
-                        function () {
-                            connection.session.call(procedure, args, kwargs, options).then(
-                                function (result) {
-                                    deferred.resolve(result);
-                                }
-                            );
-                        }
-                    );
+                    sessionPromise.then(function () {
+                        connection.session.call(procedure, args, kwargs, options)
+                            .then(function (result) {
+                                deferred.resolve(result);
+                            })
+                            .catch(function (error) {
+                                deferred.reject(error);
+                                $rootScope.$broadcast("$wamp.error", error);
+                                $log.error("$wamp.call error", error);
+                            });
+                    });
 
                     return deferred.promise;
                 }
