@@ -123,7 +123,9 @@
              *  There are four events that $wamp can broadcast:
              *      1)  $wamp.open - is sent when the WAMP connection opens.
              *
-             *              $scope.$on("$wamp.open", function (event, session) {
+             *              $scope.$on("$wamp.open", function (event, info) {
+             *                  // info.session
+             *                  // info.details
              *                  // Do something
              *              });
              *
@@ -200,9 +202,9 @@
             options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, options);
 
             connection = new autobahn.Connection(options);
-            connection.onopen = digestWrapper(function (session) {
+            connection.onopen = digestWrapper(function (session, details) {
                 $log.debug("Congrats!  You're connected to the WAMP server!");
-                $rootScope.$broadcast("$wamp.open", session);
+                $rootScope.$broadcast("$wamp.open", {session: session, details: details});
                 sessionDeferred.resolve();
             });
 
@@ -294,8 +296,8 @@
                                     })
                                     .catch(function (error) {
                                         deferred.reject(error);
-                                        $rootScope.$broadcast("$wamp.error", error);
-                                        $log.error("$wamp.publish error", error);
+                                        $rootScope.$broadcast("$wamp.error", {uri: topic, error: error});
+                                        $log.error("$wamp.publish error", {uri: topic, error: error});
                                     });
                             }
                             else {
@@ -319,8 +321,8 @@
                                 })
                                 .catch(function (error) {
                                     deferred.reject(error);
-                                    $rootScope.$broadcast("$wamp.error", error);
-                                    $log.error("$wamp.register error", error);
+                                    $rootScope.$broadcast("$wamp.error", {uri: procedure, error: error});
+                                    $log.error("$wamp.register error", {uri: procedure, error: error});
                                 });
                         }
                     );
@@ -338,8 +340,8 @@
                             })
                             .catch(function (error) {
                                 deferred.reject(error);
-                                $rootScope.$broadcast("$wamp.error", error);
-                                $log.error("$wamp.call error", error);
+                                $rootScope.$broadcast("$wamp.error", {uri: procedure, error: error});
+                                $log.error("$wamp.call error", {uri: procedure, error: error});
                             });
                     });
 
