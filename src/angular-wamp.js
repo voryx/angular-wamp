@@ -72,7 +72,19 @@
             options = initOptions || {};
         };
 
-        this.$get = function ($rootScope, $q, $log) {
+        /**
+         * @ngdoc property
+         * @name $wampProvider#interceptors
+         * @description
+         *
+         * Array containing service factories for all synchronous or asynchronous
+         * postprocessing of responses.
+         *
+         * {@link $wamp#interceptors Interceptors detailed info}
+         **/
+        var interceptors = this.interceptors = [];
+
+        this.$get = function ($rootScope, $q, $log, $injector) {
 
             /**
              * @ngdoc service
@@ -83,7 +95,7 @@
              *
              * Requires the {@link vxWamp `vxWamp`} module to be installed.
              *
-             * You can configure the WAMP connection through {@link vxWamp.$wampProvider $wampProvider}'s API.
+             * You can configure the WAMP connection through {@link $wampProvider}'s API.
              *
              * @example
              *
@@ -185,6 +197,16 @@
             };
 
             /**
+             * Interceptors stored in reverse order. Inner interceptors before outer interceptors.
+             */
+            var reversedInterceptors = [];
+
+            angular.forEach(interceptors, function (interceptor) {
+                reversedInterceptors.unshift(
+                    angular.isString(interceptor) ? $injector.get(interceptor) :  $injector.invoke(interceptor));
+            });
+
+            /**
              * @param func
              * @returns {Function}
              *
@@ -255,7 +277,71 @@
                     return connection.session.unsubscribe(subscription);
                 };
 
-                return subscription;
+                return subscription.promise;
+            };
+
+            /**
+             * Wraps WAMP actions, so that when they're called, the defined interceptors get called before the result is returned
+             *
+             * @param type
+             * @param args
+             * @param callback
+             * @returns {*}
+             */
+            var interceptorWrapper = function (type, args, callback) {
+
+                /**
+                 * Default result
+                 *
+                 * @param result
+                 * @returns {{result: *, type: *, args: *}}
+                 */
+                var result = function (result) {
+                    return {result: result, type: type, args: args};
+                };
+
+                /**
+                 * Default Error
+                 *
+                 * @param error
+                 * @returns {{error: *, type: *, args: *}}
+                 */
+                var error = function (error) {
+                    $log.error("$wamp error", {type: type, arguments: args, error: error});
+                    return {error: error, type: type, args: args};
+                };
+
+                // Only execute the action callback once we have an established session
+                var action = sessionPromise.then(function () {
+                    return callback();
+                });
+
+                var chain = [result, error];
+
+                // Apply interceptors
+                angular.forEach(reversedInterceptors, function (interceptor) {
+                    if (interceptor[type + 'Response'] || interceptor[type + 'ResponseError']) {
+                        chain.push(interceptor[type + 'Response'], interceptor[type + 'ResponseError']);
+                    }
+                });
+
+                // We only want to return the actually result or error, not the entire information object
+                chain.push(
+                    function (response) {
+                        return response.result;
+                    }, function (response) {
+                        return response.error;
+                    }
+                );
+
+                while (chain.length) {
+                    var resolved = chain.shift();
+                    var rejected = chain.shift();
+
+                    action = action.then(resolved, rejected);
+                }
+
+                return action;
             };
 
             return {
@@ -270,82 +356,39 @@
                 },
                 setAuthId: function (authid, open) {
                     options.authid = authid;
-                    if (open) connection.open();
+                    if (open) {
+                        connection.open();
+                    }
                 },
                 close: function () {
                     connection.close();
                 },
                 subscribe: function (topic, handler, options, subscribedCallback) {
-                    return Subscription(topic, handler, options, subscribedCallback).promise;
+                    return interceptorWrapper('subscribe', arguments, function () {
+                        return Subscription(topic, handler, options, subscribedCallback);
+                    });
                 },
                 unsubscribe: function (subscription) {
-                    return subscription.unsubscribe();
+                    return interceptorWrapper('unsubscribe', arguments, function () {
+                        return subscription.unsubscribe();
+                    });
                 },
                 publish: function (topic, args, kwargs, options) {
-
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(
-                        function () {
-                            var publishPromise = connection.session.publish(topic, args, kwargs, options);
-
-                            if (publishPromise) {
-                                publishPromise
-                                    .then(function (publication) {
-                                        deferred.resolve(publication);
-                                    })
-                                    .catch(function (error) {
-                                        deferred.reject(error);
-                                        $rootScope.$broadcast("$wamp.error", {uri: topic, error: error});
-                                        $log.error("$wamp.publish error", {uri: topic, error: error});
-                                    });
-                            }
-                            else {
-                                deferred.resolve(true);
-                            }
-                        }
-                    );
-
-                    return deferred.promise;
+                    return interceptorWrapper('publish', arguments, function () {
+                        return connection.session.publish(topic, args, kwargs, options);
+                    });
                 },
                 register: function (procedure, endpoint, options) {
-
                     endpoint = digestWrapper(endpoint);
 
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(function () {
-                            connection.session.register(procedure, endpoint, options)
-                                .then(function (registration) {
-                                    deferred.resolve(registration);
-                                })
-                                .catch(function (error) {
-                                    deferred.reject(error);
-                                    $rootScope.$broadcast("$wamp.error", {uri: procedure, error: error});
-                                    $log.error("$wamp.register error", {uri: procedure, error: error});
-                                });
-                        }
-                    );
-
-                    return deferred.promise;
+                    return interceptorWrapper('register', arguments, function () {
+                        return connection.session.register(procedure, endpoint, options);
+                    });
                 },
                 call: function (procedure, args, kwargs, options) {
-
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(function () {
-                        connection.session.call(procedure, args, kwargs, options)
-                            .then(function (result) {
-                                deferred.resolve(result);
-                            })
-                            .catch(function (error) {
-                                deferred.reject(error);
-                                $rootScope.$broadcast("$wamp.error", {uri: procedure, error: error});
-                                $log.error("$wamp.call error", {uri: procedure, error: error});
-                            });
+                    return interceptorWrapper('call', arguments, function () {
+                        return connection.session.call(procedure, args, kwargs, options);
                     });
-
-                    return deferred.promise;
                 }
             };
         };

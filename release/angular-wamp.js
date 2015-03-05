@@ -72,7 +72,19 @@
             options = initOptions || {};
         };
 
-        this.$get = ["$rootScope", "$q", "$log", function ($rootScope, $q, $log) {
+        /**
+         * @ngdoc property
+         * @name $wampProvider#interceptors
+         * @description
+         *
+         * Array containing service factories for all synchronous or asynchronous
+         * postprocessing of responses.
+         *
+         * {@link $wamp#interceptors Interceptors detailed info}
+         **/
+        var interceptors = this.interceptors = [];
+
+        this.$get = ["$rootScope", "$q", "$log", "$injector", function ($rootScope, $q, $log, $injector) {
 
             /**
              * @ngdoc service
@@ -83,51 +95,83 @@
              *
              * Requires the {@link vxWamp `vxWamp`} module to be installed.
              *
-             * You can configure the WAMP connection through {@link vxWamp.$wampProvider $wampProvider}'s API.
+             * You can configure the WAMP connection through {@link $wampProvider}'s API.
              *
              * @example
              *
              * app.config(function ($wampProvider) {
-         *      $wampProvider.init({
-         *          url: 'ws://127.0.0.1:9000/',
-         *          realm: 'realm1'
-         *      });
-         * })
+             *      $wampProvider.init({
+             *          url: 'ws://127.0.0.1:9000/',
+             *          realm: 'realm1'
+             *      });
+             * })
              *
              *  app.controller("MyCtrl", function($scope, $wamp) {
-         *
-         *      // 1) subscribe to a topic
-         *      function onevent(args) {
-         *          $scope.hello = args[0];
-         *      }
-         *      $wamp.subscribe('com.myapp.hello', onevent);
-         *
-         *      // 2) publish an event
-         *      $wamp.publish('com.myapp.hello', ['Hello, world!']);
-         *
-         *      // 3) register a procedure for remoting
-         *      function add2(args) {
-         *          return args[0] + args[1];
-         *      }
-         *      $wamp.register('com.myapp.add2', add2);
-         *
-         *      // 4) call a remote procedure
-         *      $wamp.call('com.myapp.add2', [2, 3]).then(
-         *          function (res) {
-         *          $scope.add2 = res;
-         *      });
-         * });
              *
+             *      // 1) subscribe to a topic
+             *      function onevent(args) {
+             *          $scope.hello = args[0];
+             *      }
+             *      $wamp.subscribe('com.myapp.hello', onevent);
              *
-             * @todo write more docs
+             *      // 2) publish an event
+             *      $wamp.publish('com.myapp.hello', ['Hello, world!']);
+             *
+             *      // 3) register a procedure for remoting
+             *      function add2(args) {
+             *          return args[0] + args[1];
+             *      }
+             *      $wamp.register('com.myapp.add2', add2);
+             *
+             *      // 4) call a remote procedure
+             *      $wamp.call('com.myapp.add2', [2, 3]).then(
+             *          function (res) {
+             *          $scope.add2 = res;
+             *      });
+             * });
+             *
+             *  Events
+             *
+             *  There are four events that $wamp can broadcast:
+             *      1)  $wamp.open - is sent when the WAMP connection opens.
+             *
+             *              $scope.$on("$wamp.open", function (event, info) {
+             *                  // info.session
+             *                  // info.details
+             *                  // Do something
+             *              });
+             *
+             *      2)  $wamp.close - is sent when the WAMP connection closes.
+             *
+             *              $scope.$on("$wamp.close", function (event, info) {
+             *                  // info.reason: wamp close reason
+             *                  // info.details: wamp close details
+             *              });
+             *
+             *      3)  $wamp.error - is sent when an error occurs while trying to make a call, publish or register
+             *
+             *              $scope.$on("$wamp.error", function (event, error) {
+             *                  // error: Autobahn.Error object
+             *              });
+             *
+             *      4)  $wamp.onchallenge
+             *
+             *              $scope.$on("$wamp.onchallenge", function (event, info) {
+             *                  // info.promise: promise to return to wamp,
+             *                  // info.session: wamp session,
+             *                  // info.method: auth method,
+             *                  // info.extra: extra
+             *
+             *                  //ie. wamp-cra
+             *                  var key =  autobahn.auth_cra.derive_key("da_password", info.extra.salt);
+             *                  return info.promise.resolve(autobahn.auth_cra.sign(key, info.extra.challenge));
+             *              });
+             *
              */
 
             var connection;
-
             var sessionDeferred = $q.defer();
             var sessionPromise = sessionDeferred.promise;
-
-            var onChallengeDeferred = $q.defer();
 
             /**
              * @param session
@@ -140,6 +184,8 @@
              */
             var onchallenge = function (session, method, extra) {
 
+                var onChallengeDeferred = $q.defer();
+
                 $rootScope.$broadcast("$wamp.onchallenge", {
                     promise: onChallengeDeferred,
                     session: session,
@@ -149,6 +195,16 @@
 
                 return onChallengeDeferred.promise;
             };
+
+            /**
+             * Interceptors stored in reverse order. Inner interceptors before outer interceptors.
+             */
+            var reversedInterceptors = [];
+
+            angular.forEach(interceptors, function (interceptor) {
+                reversedInterceptors.unshift(
+                    angular.isString(interceptor) ? $injector.get(interceptor) :  $injector.invoke(interceptor));
+            });
 
             /**
              * @param func
@@ -168,17 +224,17 @@
             options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, options);
 
             connection = new autobahn.Connection(options);
-            connection.onopen = digestWrapper(function (session) {
+            connection.onopen = digestWrapper(function (session, details) {
                 $log.debug("Congrats!  You're connected to the WAMP server!");
-                $rootScope.$broadcast("$wamp.open", session);
+                $rootScope.$broadcast("$wamp.open", {session: session, details: details});
                 sessionDeferred.resolve();
             });
 
             connection.onclose = digestWrapper(function (reason, details) {
-                $log.debug("Connection Closed: ", reason);
+                $log.debug("Connection Closed: ", reason, details);
                 $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
-
             });
+
 
             /**
              * Subscription object which self manages reconnections
@@ -221,80 +277,118 @@
                     return connection.session.unsubscribe(subscription);
                 };
 
-                return subscription;
+                return subscription.promise;
             };
 
+            /**
+             * Wraps WAMP actions, so that when they're called, the defined interceptors get called before the result is returned
+             *
+             * @param type
+             * @param args
+             * @param callback
+             * @returns {*}
+             */
+            var interceptorWrapper = function (type, args, callback) {
+
+                /**
+                 * Default result
+                 *
+                 * @param result
+                 * @returns {{result: *, type: *, args: *}}
+                 */
+                var result = function (result) {
+                    return {result: result, type: type, args: args};
+                };
+
+                /**
+                 * Default Error
+                 *
+                 * @param error
+                 * @returns {{error: *, type: *, args: *}}
+                 */
+                var error = function (error) {
+                    $log.error("$wamp error", {type: type, arguments: args, error: error});
+                    return {error: error, type: type, args: args};
+                };
+
+                // Only execute the action callback once we have an established session
+                var action = sessionPromise.then(function () {
+                    return callback();
+                });
+
+                var chain = [result, error];
+
+                // Apply interceptors
+                angular.forEach(reversedInterceptors, function (interceptor) {
+                    if (interceptor[type + 'Response'] || interceptor[type + 'ResponseError']) {
+                        chain.push(interceptor[type + 'Response'], interceptor[type + 'ResponseError']);
+                    }
+                });
+
+                // We only want to return the actually result or error, not the entire information object
+                chain.push(
+                    function (response) {
+                        return response.result;
+                    }, function (response) {
+                        return response.error;
+                    }
+                );
+
+                while (chain.length) {
+                    var resolved = chain.shift();
+                    var rejected = chain.shift();
+
+                    action = action.then(resolved, rejected);
+                }
+
+                return action;
+            };
 
             return {
                 connection: connection,
                 open: function () {
-                    connection.open();
+                    //If using WAMP CRA we need to get the authid before the connection can be opened.
+                    if (options.authmethods && options.authmethods.indexOf('wampcra') !== -1 && !options.authid) {
+                        $log.debug("You're using WAMP CRA.  The authid must be set on $wamp before the connection can be opened, ie: $wamp.setAuthId('john.doe')");
+                    } else {
+                        connection.open();
+                    }
+                },
+                setAuthId: function (authid, open) {
+                    options.authid = authid;
+                    if (open) {
+                        connection.open();
+                    }
                 },
                 close: function () {
                     connection.close();
                 },
                 subscribe: function (topic, handler, options, subscribedCallback) {
-                    return Subscription(topic, handler, options, subscribedCallback).promise;
+                    return interceptorWrapper('subscribe', arguments, function () {
+                        return Subscription(topic, handler, options, subscribedCallback);
+                    });
                 },
                 unsubscribe: function (subscription) {
-                    return subscription.unsubscribe();
+                    return interceptorWrapper('unsubscribe', arguments, function () {
+                        return subscription.unsubscribe();
+                    });
                 },
                 publish: function (topic, args, kwargs, options) {
-
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(
-                        function () {
-                            var publishPromise = connection.session.publish(topic, args, kwargs, options);
-
-                            if (publishPromise) {
-                                publishPromise.then(
-                                    function (publication) {
-                                        deferred.resolve(publication);
-                                    }
-                                );
-                            }
-                            else {
-                                deferred.resolve(true);
-                            }
-                        }
-                    );
-
-                    return deferred.promise;
+                    return interceptorWrapper('publish', arguments, function () {
+                        return connection.session.publish(topic, args, kwargs, options);
+                    });
                 },
                 register: function (procedure, endpoint, options) {
-
                     endpoint = digestWrapper(endpoint);
 
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(
-                        function () {
-                            connection.session.register(procedure, endpoint, options).then(
-                                function (registration) {
-                                    deferred.resolve(registration);
-                                }
-                            );
-                        }
-                    );
-
-                    return deferred.promise;
+                    return interceptorWrapper('register', arguments, function () {
+                        return connection.session.register(procedure, endpoint, options);
+                    });
                 },
                 call: function (procedure, args, kwargs, options) {
-
-                    var deferred = $q.defer();
-
-                    sessionPromise.then(
-                        function () {
-                            connection.session.call(procedure, args, kwargs, options).then(
-                                function (result) {
-                                    deferred.resolve(result);
-                                }
-                            );
-                        }
-                    );
-
-                    return deferred.promise;
+                    return interceptorWrapper('call', arguments, function () {
+                        return connection.session.call(procedure, args, kwargs, options);
+                    });
                 }
             };
         }];

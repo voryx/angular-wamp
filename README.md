@@ -148,4 +148,80 @@ $wamp.session;
 $wamp.connection;
 ```
 
+###Interceptors
+
+AngularWAMP supports [$http style interceptors](https://docs.angularjs.org/api/ng/service/$http#interceptors)
+
+The interceptors are service factories that are registered with the $wampProvider by adding them to the $wampProvider.interceptors array. The factory is called and injected with dependencies (if specified) and returns the interceptor.
+
+At the moment only response interceptors are supported.  There are two interceptors for each WAMP action.  They're made up of the action name followed by `Response` or `ResponseError` for errors.
+
+```JS
+.factory('myWampInterceptor', function ($q) {
+
+
+        return {
+
+            // optional method
+            'callResponse': function (response) {
+                // do something on success
+                return response;
+            },
+
+            // optional method
+            'callResponseError': function (response) {
+                // do something on error
+                return response
+            },
+
+            // optional method
+            'subscribeResponse': function (response) {
+
+                //Mangle up the subscription response callback
+                var r = response.result.handler;
+                response.result.handler = function (args) {
+                    args[0].name = "Mickey Mouse";
+                    return r(args);
+                };
+
+                //You can also return a promise
+                return $q.when(response);
+            },
+
+            // optional method
+            'subscribeResponseError': function (response) {
+                // do something on error
+                return response;
+            },
+            // optional method
+            'publishResponse': function (response) {
+                // do something on success
+                return response;
+            },
+
+            // optional method
+            'publishResponseError': function (response) {
+                // do something on error
+                return response
+            },
+            // optional method
+            'registerResponse': function (response) {
+                // do something on success
+                return response;
+            },
+
+            // optional method
+            'registerResponseError': function (response) {
+                // do something on error
+                return response
+            },
+        };
+    });
+
+
+
+    $wampProvider.interceptors.push('myWampInterceptor');
+    
+```
+
 For more information, you can reference the AutobahnJS [documentation](http://autobahn.ws/js/reference.html).
