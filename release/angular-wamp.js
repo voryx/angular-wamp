@@ -308,7 +308,7 @@
                  */
                 var error = function (error) {
                     $log.error("$wamp error", {type: type, arguments: args, error: error});
-                    return {error: error, type: type, args: args};
+                    return $q.reject({error: error, type: type, args: args});
                 };
 
                 // Only execute the action callback once we have an established session
@@ -330,7 +330,7 @@
                     function (response) {
                         return response.result;
                     }, function (response) {
-                        return response.error;
+                        return $q.reject(response.error);
                     }
                 );
 
