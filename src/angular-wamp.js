@@ -221,19 +221,41 @@
                 };
             }
 
-            options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, options);
+          /**
+           *
+           * @param connectionOptions
+           * Required options:
+           *
+           *    - `url`: `{string=}` - the WebSocket URL of the WAMP router to connect to, e.g. ws://myserver.com:8080/ws
+           *    - `realm`: `{string=}` - The WAMP realm to join, e.g. realm1
+           * @returns {*|Connection|q} the connection object
+           *
+           * @description
+           * Create the autobahn connection object.
+           *
+           */
+            function connect(connectionOptions) {
+              options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, connectionOptions);
 
-            connection = new autobahn.Connection(options);
-            connection.onopen = digestWrapper(function (session, details) {
+              connection = new autobahn.Connection(options);
+              connection.onopen = digestWrapper(function (session, details) {
                 $log.debug("Congrats!  You're connected to the WAMP server!");
                 $rootScope.$broadcast("$wamp.open", {session: session, details: details});
                 sessionDeferred.resolve();
-            });
+              });
 
-            connection.onclose = digestWrapper(function (reason, details) {
+              connection.onclose = digestWrapper(function (reason, details) {
                 $log.debug("Connection Closed: ", reason, details);
                 $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
-            });
+              });
+
+              return connection;
+            }
+
+            if (options.url != undefined && options.realm != undefined) {
+              alert("qui");
+              connection = connect(options);
+            }
 
 
             /**
@@ -346,6 +368,9 @@
 
             return {
                 connection: connection,
+                connect: function (connectionOptions) {
+                  connect(connectionOptions);
+                },
                 open: function () {
                     //If using WAMP CRA we need to get the authid before the connection can be opened.
                     if (options.authmethods && options.authmethods.indexOf('wampcra') !== -1 && !options.authid) {
