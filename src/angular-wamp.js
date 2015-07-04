@@ -1,3 +1,9 @@
+/* commonjs package manager support */
+if (typeof module !== "undefined" && typeof exports !== "undefined" && module.exports === exports){
+    var autobahn = require('autobahn');
+    module.exports = 'vxWamp';
+}
+
 (function () {
     'use strict';
 
