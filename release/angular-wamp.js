@@ -1,4 +1,4 @@
-/* commonjs package manager support (eg componentjs) */
+/* commonjs package manager support */
 if (typeof module !== "undefined" && typeof exports !== "undefined" && module.exports === exports){
     var autobahn = require('autobahn');
     module.exports = 'vxWamp';
@@ -238,6 +238,8 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
 
             connection.onclose = digestWrapper(function (reason, details) {
                 $log.debug("Connection Closed: ", reason, details);
+                sessionDeferred = $q.defer();
+                sessionPromise = sessionDeferred.promise;
                 $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
             });
 
