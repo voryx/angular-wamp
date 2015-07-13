@@ -262,6 +262,10 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                 onOpen = function () {
                     var p = connection.session.subscribe(topic, handler, options).then(
                         function (s) {
+                            if (subscription.hasOwnProperty('id')) {
+                                delete subscription.id;
+                            }
+
                             subscription = angular.extend(s, subscription);
                             deferred.resolve(subscription);
                             return s;
