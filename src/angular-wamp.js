@@ -70,6 +70,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
          *      - `max_retry_delay`: `{float=}` - Maximum delay for reconnection attempts in seconds (default: 300).
          *      - `retry_delay_growth`: `{float=}` - The growth factor applied to the retry delay between reconnection attempts (default: 1.5).
          *      - `retry_delay_jitter`: `{float=}` - The standard deviation of a Gaussian to jitter the delay on each retry cycle as a fraction of the mean (default: 0.1).
+         *      - `disable_digest`: `{boolean=}` - Disables wrapping all promises and callbacks with scope.$apply (default: false).
          *
          * @description
          * Configures the AutobhanJS Service
@@ -220,6 +221,11 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
              * Wraps a callback with a function that calls scope.$apply(), so that the callback is added to the digest
              */
             function digestWrapper(func) {
+
+                if (options.disable_digest && options.disable_digest === true) {
+                    return func;
+                }
+
                 return function () {
                     var cb = func.apply(this, arguments);
                     $rootScope.$apply();
