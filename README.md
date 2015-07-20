@@ -160,7 +160,7 @@ note: This will probably change in the future, if I can figure out a better way 
 ```Javascript
 $scope.$on("$wamp.onchallenge", function (event, data) {
     if (data.method === "myauth"){                
-        return data.promise.resolve("some_sercet");
+        return data.promise.resolve(autobahn.auth_cra.sign('someSecret', data.extra.challenge));
      } 
      //You can also access the following objects:
      // data.session             
