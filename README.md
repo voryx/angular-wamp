@@ -12,6 +12,7 @@ For more information on why WAMP is a great choice for your project, read: [Why 
 
 ## Installing AngularWAMP
 
+#### With Bower
 You can [download](https://github.com/voryx/angular-wamp/archive/master.zip) the zip file or install AngularWAMP via [Bower](http://bower.io/#install-bower):
 
 ```bash
@@ -31,6 +32,34 @@ To use AngularWAMP in your project, you need to include the following files in y
 <script src="bower_components/angular-wamp/release/angular-wamp.js"></script>
 ```
 
+#### With NPM
+
+```bash
+$ npm install angular-wamp
+```
+
+And then you can import angular-wamp into your js files:
+
+```js
+import angular     from 'angular';
+import angularWamp from 'angular-wamp';
+
+// module definition
+export default angular.module('app.starter', [angularWamp])
+    .config(function($wampProvider) {
+        $wampProvider.init({
+            url: 'ws://127.0.0.1:9000/',
+            realm: 'realm1'
+            //Any other AutobahnJS options
+        });
+    })
+    .run(function($wamp){
+        $wamp.open();
+    });
+
+angular.bootstrap(document, ['app.starter']);
+
+```
 
 ## Documentation
 
