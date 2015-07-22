@@ -366,7 +366,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
 
             return {
                 connection: connection,
-                openNewConnection : function(newOptions, open) {
+                openNewConnection : function(newOptions, open, stopOldConnectionBroadcast) {
                     //close old connection
                     if (connection.isOpen) {
                        connection.close();
@@ -374,6 +374,10 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                     }
                     options = newOptions;
                     options = angular.extend({onchallenge: digestWrapper(onchallenge), use_deferred: $q.defer}, options);
+                    if (stopOldConnectionBroadcast) {
+                        connection.onclose = null;
+                        connection.onopen = null;
+                    }
                     connection = new autobahn.Connection(options);
                     bindOpenClose();
                     if (open) {
