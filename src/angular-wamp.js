@@ -365,7 +365,9 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
             };
 
             return {
-                connection: connection,
+                connection: function(){
+                  return connection;
+                },
                 openNewConnection : function(newOptions, open, stopOldConnectionBroadcast) {
                     //close old connection
                     if (connection.isOpen) {
