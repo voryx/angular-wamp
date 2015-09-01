@@ -386,6 +386,13 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                         return Subscription(topic, handler, options, subscribedCallback);
                     });
                 },
+                subscribeOnScope: function (scope, channel, callback) {
+                    return this.subscribe(channel, callback).then(function (subscription) {
+                        scope.$on('$destroy', function () {
+                            return subscription.unsubscribe();
+                        });
+                    });
+                },
                 unsubscribe: function (subscription) {
                     return interceptorWrapper('unsubscribe', arguments, function () {
                         return subscription.unsubscribe();
