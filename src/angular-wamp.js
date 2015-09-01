@@ -403,6 +403,11 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                         return connection.session.register(procedure, endpoint, options);
                     });
                 },
+                unregister: function (registration) {
+                    return interceptorWrapper('unregister', arguments, function () {
+                        return registration.unregister();
+                    });
+                },
                 call: function (procedure, args, kwargs, options) {
                     return interceptorWrapper('call', arguments, function () {
                         return connection.session.call(procedure, args, kwargs, options);
