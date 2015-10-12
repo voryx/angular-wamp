@@ -174,7 +174,7 @@ You can also access the ``connection`` and ``session`` through the ``$wamp`` ser
 
 ```Javascript
 $wamp.session;
-$wamp.connection;
+$wamp.connection();
 ```
 
 ###Interceptors
