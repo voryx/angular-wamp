@@ -244,8 +244,16 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
 
             connection.onclose = digestWrapper(function (reason, details) {
                 $log.debug("Connection Closed: ", reason, details);
-                sessionDeferred = $q.defer();
-                sessionPromise = sessionDeferred.promise;
+
+                //Reject outstanding RPC calls
+                for (var key in connection.session._call_reqs) {
+                    if (connection.session._call_reqs.hasOwnProperty(key)) {
+                        var error = new Error("Connection Closed");
+                        var call = connection.session._call_reqs[key];
+                        call[0].reject(error);
+                    }
+                }
+
                 $rootScope.$broadcast("$wamp.close", {reason: reason, details: details});
             });
 
