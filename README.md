@@ -177,6 +177,28 @@ $wamp.session;
 $wamp.connection;
 ```
 
+### Multiple Connections
+
+You can create multiple connections by creating a new provider that wraps `$wampProvider`.  You'll also need to specify a `prefix` for that services wamp events, which will be used instead of `$wamp`.
+
+```JS
+app.provider('$wamp2', function ($wampProvider) {
+
+        var options = {
+            url: 'ws://127.0.0.1:9992',
+            realm: 'thruway.auth',
+            prefix: 'wamp2'
+        };
+
+        this.$get = function ($injector) {
+            $wampProvider.init(options);
+            return $injector.invoke($wampProvider.$get);
+        };
+    })
+
+```
+You can now use the service `$wamp2` exactly like `$wamp`.
+
 ###Interceptors
 
 AngularWAMP supports [$http style interceptors](https://docs.angularjs.org/api/ng/service/$http#interceptors)
