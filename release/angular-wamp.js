@@ -235,7 +235,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
 
                 return function () {
                     var cb = func.apply(this, arguments);
-                    $rootScope.$apply();
+                    $rootScope.$applyAsync();
                     return cb;
                 };
             }
