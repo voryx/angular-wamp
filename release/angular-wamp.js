@@ -403,6 +403,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                         scope.$on('$destroy', function () {
                             return subscription.unsubscribe();
                         });
+                        return subscription;
                     });
                 },
                 unsubscribe: function (subscription) {
