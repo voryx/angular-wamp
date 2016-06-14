@@ -384,12 +384,27 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                         connection.open();
                     }
                 },
+
+                //Add or update initial options. Does not delete!
+                setOptions: function(updatedOptions, closeOld, openNew) {
+                    if (closeOld && connection.isOpen) {
+                      connection.close();
+                    }
+
+                    angular.extend(options, updatedOptions);
+
+                    if (openNew) {
+                        connection.open();
+                    }
+                },
+
                 setAuthId: function (authid, open) {
                     options.authid = authid;
                     if (open) {
                         connection.open();
                     }
                 },
+
                 close: function () {
                     connection.close();
                 },
