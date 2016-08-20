@@ -40,6 +40,8 @@
     "grunt-contrib-concat": "^0.5.1",
     "grunt-contrib-uglify": "^0.9.1",
     "grunt-ng-annotate": "^1.0.1",
-    "load-grunt-tasks": "^3.2.0"
+    "load-grunt-tasks": "^3.2.0",
+    "utf-8-validate": "^1.2.1",
+    "bufferutil": "^1.2.1"
   }
 }
