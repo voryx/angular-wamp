@@ -287,6 +287,9 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                             subscription = angular.extend(s, subscription);
                             deferred.resolve(subscription);
                             return s;
+                        },
+                        function (err) {
+                        	deferred.reject(err);
                         }
                     );
                     if (subscribedCallback) {
