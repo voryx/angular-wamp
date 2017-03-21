@@ -1,7 +1,7 @@
 {
   "name": "angular-wamp",
   "description": "Angular library for Autobahn.js (WAMP v2)",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "author": "David Dan <davidwdan@gmail.com>",
   "homepage": "https://github.com/voryx/angular-wamp",
   "repository": {
