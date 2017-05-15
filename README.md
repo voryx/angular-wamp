@@ -92,7 +92,14 @@ app.controller("MyCtrl", function($scope, $wamp) {
    function onevent(args) {
       $scope.hello = args[0];
    }
-   $wamp.subscribe('com.myapp.hello', onevent);
+   $wamp.subscribe('com.myapp.hello', onevent).then(
+    function (subscriptionObject) {
+        console.log("Got subscription object : " + subscriptionObject);
+    },
+    function (err) {
+        console.log("Error while subscribing to com.myapp.hello : " + err);
+    }
+   );
 
    // 2) publish an event
    $wamp.publish('com.myapp.hello', ['Hello, world!']);
