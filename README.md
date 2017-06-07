@@ -5,7 +5,7 @@ AngularWAMP is an AngularJS wrapper for [AutobahnJS](https://github.com/tavendo/
 
 It simplifies getting WAMP v2 integrated into your AngularJS application.  For the most part, it's works just like AutobahnJS, with a couple of angular related changes, which are noted below.
 
-###What is this library used for?
+### What is this library used for?
 This library allows you to use WebSockets in your AngularJS app with any language that support the WAMPv2 protocol.  This includes, [Python](https://github.com/crossbario/crossbar) and [PHP](https://github.com/voryx/Thruway).  For a complete list of WAMPv2 implementations, visit the [implementations page](http://wamp.ws/implementations/) on wamp.ws.
 
 For more information on why WAMP is a great choice for your project, read: [Why WAMP?](http://wamp.ws/why/)
@@ -120,7 +120,7 @@ app.controller("MyCtrl", function($scope, $wamp) {
 
 You'll notice that we did not need to wait for the connection to be established before making WAMP calls.  That's because, all requests are queued until a connection is established.
 
-###Connecting
+### Connecting
 
 To open the connection you just need to call ``$wamp.open()``.  This can be done from anywhere that allows ``$wamp`` to be injected.  If you want to open the connection right when the app starts, you can add it to ``.run()``.
 
@@ -147,7 +147,7 @@ app.controller("MainCtrl", function($scope, $wamp) {
 });
 ```
 
-###Authentication
+### Authentication
 The other major change from AutobahnJS is authentication.  The auth methods can be added to the connection options through the ``$wampProvider`` within ``.config()``.
 
 ```Javascript
@@ -175,7 +175,7 @@ $scope.$on("$wamp.onchallenge", function (event, data) {
 });
 ```
 
-###Other Properties
+### Other Properties
 
 You can also access the ``connection`` and ``session`` through the ``$wamp`` service:
 
@@ -206,7 +206,7 @@ app.provider('$wamp2', function ($wampProvider) {
 ```
 You can now use the service `$wamp2` exactly like `$wamp`.
 
-###Interceptors
+### Interceptors
 
 AngularWAMP supports [$http style interceptors](https://docs.angularjs.org/api/ng/service/$http#interceptors)
 
