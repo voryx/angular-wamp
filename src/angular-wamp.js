@@ -93,7 +93,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
          **/
         var interceptors = this.interceptors = [];
 
-        this.$get = function ($rootScope, $q, $log, $injector) {
+        this.$get = ["$rootScope", "$q", "$log", "$injector", function ($rootScope, $q, $log, $injector) {
 
             /**
              * @ngdoc service
@@ -387,12 +387,27 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                         connection.open();
                     }
                 },
+
+                //Add or update initial options. Does not delete!
+                setOptions: function(updatedOptions, closeOld, openNew) {
+                    if (closeOld && connection.isOpen) {
+                      connection.close();
+                    }
+
+                    angular.extend(options, updatedOptions);
+
+                    if (openNew) {
+                        connection.open();
+                    }
+                },
+
                 setAuthId: function (authid, open) {
                     options.authid = authid;
                     if (open) {
                         connection.open();
                     }
                 },
+
                 close: function () {
                     connection.close();
                 },
@@ -437,7 +452,7 @@ if (typeof module !== "undefined" && typeof exports !== "undefined" && module.ex
                     });
                 }
             };
-        };
+        }];
 
         return this;
 
